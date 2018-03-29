@@ -26,11 +26,11 @@ def str_from_ss(ss: str_stream):
 
 
 def key_from_ss(ss: str_stream):
-    char = next(ss)
-    if char == '"':
-        key = str_from_ss(ss)
-        if next(ss) == ':':
-            return key
+    # char = next(ss)
+    # if char == '"':
+    key = str_from_ss(ss)
+    if next(ss) == ':':
+        return key
     log('read key error')
     return
 
@@ -62,8 +62,8 @@ def bool_from_ss(ss: str_stream, first_char):
         return b
 
 
-def value_from_ss(ss: str_stream):
-    char = next(ss)
+def value_from_ss(ss: str_stream, tail_char: str):
+    char = tail_char
     if char == '"':
         value = str_from_ss(ss)
         log(value)
@@ -84,42 +84,57 @@ def value_from_ss(ss: str_stream):
     elif char == '[':
         value = list_from_ss(ss)
         tail_char = next(ss)
+    else:
+        log('Get value error.', char)
+        return
 
     return value, tail_char
 
 
-def read_kv(d: dict, ss: str_stream):
-    key = key_from_ss(ss)
-    value, tail_char = value_from_ss(ss)
-
-    d[key] = value
-    if tail_char == ',':
-        return read_kv(d, ss)
-    elif tail_char == '}':
+def read_kv(d: dict, ss: str_stream, tail_char: str):
+    # char = next(ss)
+    if tail_char == '}':
         return d
+    elif tail_char == ',':
+        return read_kv(d, ss, next(ss))
+    elif tail_char == '"':
+        key = key_from_ss(ss)
+        value, tail_char = value_from_ss(ss, next(ss))
+
+        d[key] = value
+        # if tail_char == ',':
+        return read_kv(d, ss, tail_char)
+        # else:
+        #     log('make dict error', tail_char)
     else:
-        log('make dict error')
+        log('make dict error', tail_char)
 
 
 def dict_from_ss(ss: str_stream):
     d = dict()
-    return read_kv(d, ss)
+    tail_char = next(ss)
+    return read_kv(d, ss, tail_char)
 
 
-def read_item(ls: list, ss: str_stream):
-    item, tail_char = value_from_ss(ss)
-    ls.append(item)
+def read_item(ls: list, ss: str_stream, tail_char: str):
+    # tail_char = next(ss)
     if tail_char == ',':
-        return read_item(ls, ss)
+        return read_item(ls, ss, next(ss))
     elif tail_char == ']':
         return ls
     else:
-        log('read item error')
+        item, tail_char = value_from_ss(ss, tail_char)
+        log(item)
+        ls.append(item)
+        return read_item(ls, ss, tail_char)
+        # else:
+        #     log('read item error')
 
 
 def list_from_ss(ss: str_stream):
     ls = list()
-    return read_item(ls, ss)
+    tail_char = next(ss)
+    return read_item(ls, ss, tail_char)
 
 
 def load(string: str):
@@ -142,8 +157,9 @@ if __name__ == '__main__':
      "e": {"f": 1},
      "f": [
         "g",
-        "h"
-     ]
+        "h",
+     ],
+     ,
 }
     '''
     # test = '[1, 2, 3]'
